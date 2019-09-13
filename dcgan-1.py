@@ -165,10 +165,9 @@ for fn in fs:
 fs = os.listdir('/home/nagalab/soutarou/line_drawing')
 for fn in fs:
 	# 画像を読み込んで128×128ピクセルにリサイズ
-	line_drawing = Image.open('/home/nagalab/soutarou/line drawing/' + fn).resize((128, 128))
+	line_drawing = Image.open('/home/nagalab/soutarou/line_drawing/' + fn).resize((128, 128))
 	# 画素データを0〜1の領域にする
 	hpix = np.array(line_drawing, dtype=np.float32) / 255.0
-	hpix = hpix.transpose(2,0,1)
 	# 配列に追加
 	line_drawings.append(hpix)
 
