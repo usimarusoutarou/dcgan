@@ -150,6 +150,7 @@ chainer.serializers.save_hdf5( 'dcgan-gen.hdf5', model_gen )
 chainer.serializers.save_hdf5( 'dcgan-dis.hdf5', model_dis )
 
 images = []
+line_drawings = []
 
 fs = os.listdir('/home/nagalab/soutarou/images')
 for fn in fs:
@@ -160,6 +161,16 @@ for fn in fs:
 	hpix = hpix.transpose(2,0,1)
 	# 配列に追加
 	images.append(hpix)
+
+fs = os.listdir('/home/nagalab/soutarou/line_drawing')
+for fn in fs:
+	# 画像を読み込んで128×128ピクセルにリサイズ
+	line_drawing = Image.open('/home/nagalab/soutarou/line drawing/' + fn).resize((128, 128))
+	# 画素データを0〜1の領域にする
+	hpix = np.array(line_drawing, dtype=np.float32) / 255.0
+	hpix = hpix.transpose(2,0,1)
+	# 配列に追加
+	line_drawings.append(hpix)
 
 # 繰り返し条件を作成する
 train_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
