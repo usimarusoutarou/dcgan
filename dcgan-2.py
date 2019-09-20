@@ -116,13 +116,13 @@ if uses_device >= 0:
 chainer.serializers.load_hdf5( 'dcgan-gen-28.hdf5', model )
 
 # 画像を生成する
-num_generate = 100	# 生成する画像の数
+num_generate = 1	# 生成する画像の数
 # 元となるベクトルを作成
 rnd = random.uniform(-1, 1, (num_generate, 100, 1, 1))
 rnd = cp.array(rnd, dtype=cp.float32)
 
 images = []
-
+"""
 fs = os.listdir('/home/nagalab/soutarou/images')
 for fn in fs:
 	# 画像を読み込んで128×128ピクセルにリサイズ
@@ -132,7 +132,18 @@ for fn in fs:
 	hpix = hpix.transpose(2,0,1)
 	# 配列に追加
 	images.append(hpix)
-
+	
+images = cp.array(images, dtype=cp.float32)
+"""
+# 画像を読み込んで128×128ピクセルにリサイズ
+img = Image.open('/home/nagalab/soutarou/images/' + '68068733_p0_master1200.jpg').convert('RGB').resize((128, 128))
+# 画素データを0〜1の領域にする
+hpix = np.array(img, dtype=np.float32) / 255.0
+hpix = hpix.transpose(2,0,1)
+# 配列に追加
+images.append(hpix)
+	
+images = cp.array(images, dtype=cp.float32)
 
 # バッチ処理を使って一度に生成する
 with chainer.using_config('train', False):

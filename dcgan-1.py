@@ -139,9 +139,9 @@ class DCGAN_Discriminator_NN(chainer.Chain):
 # カスタムUpdaterのクラス
 class DCGANUpdater(training.StandardUpdater):
 
-	def __init__(self, train_iter, optimizer, device):
+	def __init__(self, images_iter, optimizer, device):
 		super(DCGANUpdater, self).__init__(
-			train_iter,
+			images_iter,
 			optimizer,
 			device=device
 		)
@@ -177,9 +177,9 @@ class DCGANUpdater(training.StandardUpdater):
 		rnd = cp.array(rnd, dtype=cp.float32)
 		
 		# 画像を生成して認識と教師データから認識
-		x_fake = gen(src)		# 乱数からの生成結果
+		x_fake = gen(src[2])		# 乱数からの生成結果
 		y_fake = dis(x_fake)	# 乱数から生成したものの認識結果
-		y_real = dis(src)		# 教師データからの認識結果
+		y_real = dis(src[1])		# 教師データからの認識結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
@@ -204,27 +204,25 @@ chainer.serializers.save_hdf5( 'dcgan-dis.hdf5', model_dis )
 images = []
 line_drawings = []
 
-fs = os.listdir('/home/nagalab/soutarou/images')
+fs = os.listdir('/home/nagalab/soutarou/dcgan/images')
 for fn in fs:
 	# 画像を読み込んで128×128ピクセルにリサイズ
-	img = Image.open('/home/nagalab/soutarou/images/' + fn).convert('RGB').resize((128, 128))
-	# 画素データを0〜1の領域にする
-	hpix = np.array(img, dtype=np.float32) / 255.0
-	hpix = hpix.transpose(2,0,1)
-	# 配列に追加
-	images.append(hpix)
+	img = Image.open('/home/nagalab/soutarou/dcgan/images/' + fn).convert('RGB').resize((128, 128))
 
-fs = os.listdir('/home/nagalab/soutarou/line_drawing')
-for fn in fs:
-	# 画像を読み込んで128×128ピクセルにリサイズ
-	line_drawing = Image.open('/home/nagalab/soutarou/line_drawing/' + fn).resize((128, 128))
-	# 画素データを0〜1の領域にする
-	hpix = np.array(line_drawing, dtype=np.float32) / 255.0
+	if 'jpg' in fn:
+		# 画素データを0〜1の領域にする
+		hpix1 = np.array(img, dtype=np.float32) / 255.0
+		hpix1= hpix1.transpose(2,0,1)
+	else:
+		# 画素データを0〜1の領域にする
+		hpix2 = np.array(img, dtype=np.float32) / 255.0
+		hpix2= hpix2.transpose(2,0,1)
+
 	# 配列に追加
-	line_drawings.append(hpix)
+	images.append(hpix1,hpix2)
 
 # 繰り返し条件を作成する
-train_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
+images_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
 
 # 誤差逆伝播法アルゴリズムを選択する
 optimizer_gen = optimizers.Adam(alpha=0.0002, beta1=0.5)
@@ -233,7 +231,7 @@ optimizer_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
 optimizer_dis.setup(model_dis)
 
 # デバイスを選択してTrainerを作成する
-updater = DCGANUpdater(train_iter, \
+updater = DCGANUpdater(images_iter, \
 		{'opt_gen':optimizer_gen, 'opt_dis':optimizer_dis}, \
 		device=uses_device)
 trainer = training.Trainer(updater, (50000, 'epoch'), out="result")
