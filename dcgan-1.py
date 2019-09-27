@@ -171,15 +171,11 @@ class DCGANUpdater(training.StandardUpdater):
 		# ニューラルネットワークのモデルを取得
 		gen = optimizer_gen.target
 		dis = optimizer_dis.target
-
-		# 乱数データを用意
-		rnd = random.uniform(-1, 1, (src.shape[0], 100))
-		rnd = cp.array(rnd, dtype=cp.float32)
 		
 		# 画像を生成して認識と教師データから認識
-		x_fake = gen(src[2])		# 乱数からの生成結果
+		x_fake = gen(src[1])		# 乱数からの生成結果
 		y_fake = dis(x_fake)	# 乱数から生成したものの認識結果
-		y_real = dis(src[1])		# 教師データからの認識結果
+		y_real = dis(src[0])		# 教師データからの認識結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
@@ -217,9 +213,8 @@ for fn in fs:
 		# 画素データを0〜1の領域にする
 		hpix2 = np.array(img, dtype=np.float32) / 255.0
 		hpix2= hpix2.transpose(2,0,1)
-
-	# 配列に追加
-	images.append(hpix1,hpix2)
+		# 配列に追加
+		images.append([hpix1,hpix2])
 
 # 繰り返し条件を作成する
 images_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
