@@ -1,7 +1,7 @@
 import chainer
 import chainer.functions as F
 import chainer.links as L
-from chainer import training, datasets, iterators, optimizers
+from chainer import training, datasets, iterators, optimizers, reporter
 from chainer.training import extensions
 import numpy as np
 import os
@@ -9,7 +9,7 @@ import math
 from numpy import random
 from PIL import Image
 
-batch_size = 10			# バッチサイズ10
+batch_size = 2			# バッチサイズ10
 uses_device = 0			# GPU#0を使用
 image_size = 128		# 生成画像のサイズ
 neuron_size = 64		# 中間層のサイズ
@@ -152,6 +152,7 @@ class DCGANUpdater(training.StandardUpdater):
 		L1 = F.sum(F.softplus(-y_real)) / batchsize
 		L2 = F.sum(F.softplus(y_fake)) / batchsize
 		loss = L1 + L2
+		reporter.report({'dis_loss':loss})
 		return loss
 
 	# 画像生成側の損失関数
