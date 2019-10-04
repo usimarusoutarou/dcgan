@@ -9,10 +9,8 @@ import math
 from numpy import random
 from PIL import Image
 
-batch_size = 2			# バッチサイズ10
+batch_size = 2			# バッチサイズ
 uses_device = 0			# GPU#0を使用
-image_size = 128		# 生成画像のサイズ
-neuron_size = 64		# 中間層のサイズ
 
 # GPU使用時とCPU使用時でデータ形式が変わる
 if uses_device >= 0:
@@ -159,6 +157,7 @@ class DCGANUpdater(training.StandardUpdater):
 	def loss_gen(self, gen, y_fake):
 		batchsize = len(y_fake)
 		loss = F.sum(F.softplus(-y_fake)) / batchsize
+		reporter.report({'gen_loss':loss})
 		return loss
 
 	def update_core(self):
@@ -173,10 +172,9 @@ class DCGANUpdater(training.StandardUpdater):
 		gen = optimizer_gen.target
 		dis = optimizer_dis.target
 		
-		# 画像を生成して認識と教師データから認識
-		x_fake = gen(src[1])		# 乱数からの生成結果
-		y_fake = dis(x_fake)	# 乱数から生成したものの認識結果
-		y_real = dis(src[0])		# 教師データからの認識結果
+		x_fake = gen(src[1])		# 線画からの生成結果
+		y_fake = dis(x_fake)	# 線画から生成したものの判別結果
+		y_real = dis(src[0])		# 教師データからの判別結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
@@ -221,9 +219,9 @@ for fn in fs:
 images_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
 
 # 誤差逆伝播法アルゴリズムを選択する
-optimizer_gen = optimizers.Adam(alpha=0.0002, beta1=0.5)
+optimizer_gen = optimizers.Adam(alpha=0.0001, beta1=0.5)
 optimizer_gen.setup(model_gen)
-optimizer_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
+optimizer_dis = optimizers.Adam(alpha=0.0001, beta1=0.5)
 optimizer_dis.setup(model_dis)
 
 # デバイスを選択してTrainerを作成する
@@ -232,6 +230,7 @@ updater = DCGANUpdater(images_iter, \
 		device=uses_device)
 trainer = training.Trainer(updater, (50000, 'epoch'), out="result")
 # 学習の進展を表示するようにする
+trainer.extend(extensions.LogReport(trigger=(100, 'epoch'), log_name='log'))
 trainer.extend(extensions.ProgressBar())
 
 # 中間結果を保存する
