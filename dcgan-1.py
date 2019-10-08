@@ -154,9 +154,8 @@ class DCGANUpdater(training.StandardUpdater):
 		return loss
 
 	# 画像生成側の損失関数
-	def loss_gen(self, gen, y_fake):
-		batchsize = len(y_fake)
-		loss = F.sum(F.softplus(-y_fake)) / batchsize
+	def loss_gen(self, gen, x_fake, x_real):
+		loss = F.mean_squared_error(x_fake, x_real)
 		reporter.report({'gen_loss':loss})
 		return loss
 
@@ -173,12 +172,13 @@ class DCGANUpdater(training.StandardUpdater):
 		dis = optimizer_dis.target
 		
 		x_fake = gen(src[1])		# 線画からの生成結果
+		x_real = src[0]
 		y_fake = dis(x_fake)	# 線画から生成したものの判別結果
 		y_real = dis(src[0])		# 教師データからの判別結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
-		optimizer_gen.update(self.loss_gen, gen, y_fake)
+		optimizer_gen.update(self.loss_gen, gen, x_fake, x_real)
 		
 
 # ニューラルネットワークを作成
@@ -231,6 +231,7 @@ updater = DCGANUpdater(images_iter, \
 trainer = training.Trainer(updater, (50000, 'epoch'), out="result")
 # 学習の進展を表示するようにする
 trainer.extend(extensions.LogReport(trigger=(100, 'epoch'), log_name='log'))
+trainer.extend(extensions.PlotReport(['dis_loss', 'gen_loss'], x_key='epoch', file_name='loss.png'))
 trainer.extend(extensions.ProgressBar())
 
 # 中間結果を保存する
