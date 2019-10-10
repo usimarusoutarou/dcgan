@@ -96,7 +96,7 @@ class DCGAN_Generator_NN(chainer.Chain):
 		del d3, e2
 		d1 = F.relu(self.bnd1(self.dc1(d2)))
 		del d2
-		d0 = self.dc0(F.concat([e0, d1]))
+		d0 = F.sigmoid(self.dc0(F.concat([e0, d1])))
 		
 		return d0	# 結果を返すのみ
 
@@ -111,7 +111,7 @@ if uses_device >= 0:
 	model.to_gpu()
 
 # 学習結果を読み込む
-chainer.serializers.load_hdf5( 'dcgan-gen-1.hdf5', model )
+chainer.serializers.load_hdf5( 'dcgan-gen-39.hdf5', model )
 
 # 画像を生成する
 num_generate = 1	# 生成する画像の数

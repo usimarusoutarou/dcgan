@@ -9,7 +9,7 @@ import math
 from numpy import random
 from PIL import Image
 
-batch_size = 2			# バッチサイズ
+batch_size = 10			# バッチサイズ
 uses_device = 0			# GPU#0を使用
 
 # GPU使用時とCPU使用時でデータ形式が変わる
@@ -95,7 +95,7 @@ class DCGAN_Generator_NN(chainer.Chain):
 		del d3, e2
 		d1 = F.relu(self.bnd1(self.dc1(d2)))
 		del d2
-		d0 = self.dc0(F.concat([e0, d1]))
+		d0 = F.sigmoid(self.dc0(F.concat([e0, d1])))
 		
 		return d0	# 結果を返すのみ
 
@@ -125,13 +125,13 @@ class DCGAN_Discriminator_NN(chainer.Chain):
 			self.bnc6=L.BatchNormalization(128)
 			self.bnc7=L.BatchNormalization(256)
 	def __call__(self, x):
-		h = F.relu(self.bnc1(self.c1(x)))
-		h = F.relu(self.bnc2(self.c2(h)))
-		h = F.relu(self.bnc3(self.c3(h)))
-		h = F.relu(self.bnc4(self.c4(h)))
-		h = F.relu(self.bnc5(self.c5(h)))
-		h = F.relu(self.bnc6(self.c6(h)))
-		h = F.relu(self.bnc7(self.c7(h)))
+		h = F.leaky_relu(self.bnc1(self.c1(x)))
+		h = F.leaky_relu(self.bnc2(self.c2(h)))
+		h = F.leaky_relu(self.bnc3(self.c3(h)))
+		h = F.leaky_relu(self.bnc4(self.c4(h)))
+		h = F.leaky_relu(self.bnc5(self.c5(h)))
+		h = F.leaky_relu(self.bnc6(self.c6(h)))
+		h = F.leaky_relu(self.bnc7(self.c7(h)))
 		return 	self.l8l(h)# 結果を返すのみ
 
 # カスタムUpdaterのクラス
@@ -154,8 +154,9 @@ class DCGANUpdater(training.StandardUpdater):
 		return loss
 
 	# 画像生成側の損失関数
-	def loss_gen(self, gen, x_fake, x_real):
-		loss = F.mean_squared_error(x_fake, x_real)
+	def loss_gen(self, gen, y_fake):
+		batchsize = len(y_fake)
+		loss = F.sum(F.softplus(-y_fake)) / batchsize
 		reporter.report({'gen_loss':loss})
 		return loss
 
@@ -172,13 +173,12 @@ class DCGANUpdater(training.StandardUpdater):
 		dis = optimizer_dis.target
 		
 		x_fake = gen(src[1])		# 線画からの生成結果
-		x_real = src[0]
 		y_fake = dis(x_fake)	# 線画から生成したものの判別結果
 		y_real = dis(src[0])		# 教師データからの判別結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
-		optimizer_gen.update(self.loss_gen, gen, x_fake, x_real)
+		optimizer_gen.update(self.loss_gen, gen, y_fake)
 		
 
 # ニューラルネットワークを作成
