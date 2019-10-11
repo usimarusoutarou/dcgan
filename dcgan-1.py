@@ -1,7 +1,7 @@
 import chainer
 import chainer.functions as F
 import chainer.links as L
-from chainer import training, datasets, iterators, optimizers
+from chainer import training, datasets, iterators, optimizers, reporter
 from chainer.training import extensions
 import numpy as np
 import os
@@ -9,10 +9,8 @@ import math
 from numpy import random
 from PIL import Image
 
-batch_size = 10			# バッチサイズ10
+batch_size = 10			# バッチサイズ
 uses_device = 0			# GPU#0を使用
-image_size = 128		# 生成画像のサイズ
-neuron_size = 64		# 中間層のサイズ
 
 # GPU使用時とCPU使用時でデータ形式が変わる
 if uses_device >= 0:
@@ -25,71 +23,123 @@ else:
 class DCGAN_Generator_NN(chainer.Chain):
 
 	def __init__(self):
-		# 重みデータの初期値を指定する
-		w = chainer.initializers.Normal(scale=0.02, dtype=None)
 		super(DCGAN_Generator_NN, self).__init__()
 		# 全ての層を定義する
 		with self.init_scope():
-			self.l0 = L.Linear(100, neuron_size * image_size * image_size // 8 // 8,
-							   initialW=w)
-			self.dc1 = L.Deconvolution2D(neuron_size, neuron_size // 2, 4, 2, 1, initialW=w)
-			self.dc2 = L.Deconvolution2D(neuron_size // 2, neuron_size // 4, 4, 2, 1, initialW=w)
-			self.dc3 = L.Deconvolution2D(neuron_size // 4, neuron_size // 8, 4, 2, 1, initialW=w)
-			self.dc4 = L.Deconvolution2D(neuron_size // 8, 3, 3, 1, 1, initialW=w)
-			self.bn0 = L.BatchNormalization(neuron_size * image_size * image_size // 8 // 8)
-			self.bn1 = L.BatchNormalization(neuron_size // 2)
-			self.bn2 = L.BatchNormalization(neuron_size // 4)
-			self.bn3 = L.BatchNormalization(neuron_size // 8)
+			self.c0=L.Convolution2D(3, 32, 3, 1, 1)
+			self.c1=L.Convolution2D(32, 64, 4, 2, 1)
+			self.c2=L.Convolution2D(64, 64, 3, 1, 1)
+			self.c3=L.Convolution2D(64, 128, 4, 2, 1)
+			self.c4=L.Convolution2D(128, 128, 3, 1, 1)
+			self.c5=L.Convolution2D(128, 256, 4, 2, 1)
+			self.c6=L.Convolution2D(256, 256, 3, 1, 1)
+			self.c7=L.Convolution2D(256, 512, 4, 2, 1)
+			self.c8=L.Convolution2D(512, 512, 3, 1, 1)
 
-	def __call__(self, z):
-		shape = (len(z), neuron_size, image_size // 8, image_size // 8)
-		h = F.reshape(F.relu(self.bn0(self.l0(z))), shape)
-		h = F.relu(self.bn1(self.dc1(h)))
-		h = F.relu(self.bn2(self.dc2(h)))
-		h = F.relu(self.bn3(self.dc3(h)))
-		x = F.sigmoid(self.dc4(h))
-		return x	# 結果を返すのみ
+			self.dc8=L.Deconvolution2D(1024, 512, 4, 2, 1)
+			self.dc7=L.Convolution2D(512, 256, 3, 1, 1)
+			self.dc6=L.Deconvolution2D(512, 256, 4, 2, 1)
+			self.dc5=L.Convolution2D(256, 128, 3, 1, 1)
+			self.dc4=L.Deconvolution2D(256, 128, 4, 2, 1)
+			self.dc3=L.Convolution2D(128, 64, 3, 1, 1)
+			self.dc2=L.Deconvolution2D(128, 64, 4, 2, 1)
+			self.dc1=L.Convolution2D(64, 32, 3, 1, 1)
+			self.dc0=L.Convolution2D(64, 3, 3, 1, 1)
+
+			self.bnc0=L.BatchNormalization(32)
+			self.bnc1=L.BatchNormalization(64)
+			self.bnc2=L.BatchNormalization(64)
+			self.bnc3=L.BatchNormalization(128)
+			self.bnc4=L.BatchNormalization(128)
+			self.bnc5=L.BatchNormalization(256)
+			self.bnc6=L.BatchNormalization(256)
+			self.bnc7=L.BatchNormalization(512)
+			self.bnc8=L.BatchNormalization(512)
+
+			self.bnd8=L.BatchNormalization(512)
+			self.bnd7=L.BatchNormalization(256)
+			self.bnd6=L.BatchNormalization(256)
+			self.bnd5=L.BatchNormalization(128)
+			self.bnd4=L.BatchNormalization(128)
+			self.bnd3=L.BatchNormalization(64)
+			self.bnd2=L.BatchNormalization(64)
+			self.bnd1=L.BatchNormalization(32)
+
+	def __call__(self, x):
+		e0 = F.relu(self.bnc0(self.c0(x)))
+		e1 = F.relu(self.bnc1(self.c1(e0)))
+		e2 = F.relu(self.bnc2(self.c2(e1)))
+		del e1
+		e3 = F.relu(self.bnc3(self.c3(e2)))
+		e4 = F.relu(self.bnc4(self.c4(e3)))
+		del e3
+		e5 = F.relu(self.bnc5(self.c5(e4)))
+		e6 = F.relu(self.bnc6(self.c6(e5)))
+		del e5
+		e7 = F.relu(self.bnc7(self.c7(e6)))
+		e8 = F.relu(self.bnc8(self.c8(e7)))
+
+		d8 = F.relu(self.bnd8(self.dc8(F.concat([e7, e8]))))
+		del e7, e8
+		d7 = F.relu(self.bnd7(self.dc7(d8)))
+		del d8
+		d6 = F.relu(self.bnd6(self.dc6(F.concat([e6, d7]))))
+		del d7, e6
+		d5 = F.relu(self.bnd5(self.dc5(d6)))
+		del d6
+		d4 = F.relu(self.bnd4(self.dc4(F.concat([e4, d5]))))
+		del d5, e4
+		d3 = F.relu(self.bnd3(self.dc3(d4)))
+		del d4
+		d2 = F.relu(self.bnd2(self.dc2(F.concat([e2, d3]))))
+		del d3, e2
+		d1 = F.relu(self.bnd1(self.dc1(d2)))
+		del d2
+		d0 = F.sigmoid(self.dc0(F.concat([e0, d1])))
+		
+		return d0	# 結果を返すのみ
 
 # 画像を確認するNN
 class DCGAN_Discriminator_NN(chainer.Chain):
 
 	def __init__(self):
 		# 重みデータの初期値を指定する
-		w = chainer.initializers.Normal(scale=0.02, dtype=None)
+
 		super(DCGAN_Discriminator_NN, self).__init__()
 		# 全ての層を定義する
 		with self.init_scope():
-			self.c0_0 = L.Convolution2D(3, neuron_size //  8, 3, 1, 1, initialW=w)
-			self.c0_1 = L.Convolution2D(neuron_size //  8, neuron_size // 4, 4, 2, 1, initialW=w)
-			self.c1_0 = L.Convolution2D(neuron_size //  4, neuron_size // 4, 3, 1, 1, initialW=w)
-			self.c1_1 = L.Convolution2D(neuron_size //  4, neuron_size // 2, 4, 2, 1, initialW=w)
-			self.c2_0 = L.Convolution2D(neuron_size //  2, neuron_size // 2, 3, 1, 1, initialW=w)
-			self.c2_1 = L.Convolution2D(neuron_size //  2, neuron_size, 4, 2, 1, initialW=w)
-			self.c3_0 = L.Convolution2D(neuron_size, neuron_size, 3, 1, 1, initialW=w)
-			self.l4 = L.Linear(neuron_size * image_size * image_size // 8 // 8, 1, initialW=w)
-			self.bn0_1 = L.BatchNormalization(neuron_size // 4, use_gamma=False)
-			self.bn1_0 = L.BatchNormalization(neuron_size // 4, use_gamma=False)
-			self.bn1_1 = L.BatchNormalization(neuron_size // 2, use_gamma=False)
-			self.bn2_0 = L.BatchNormalization(neuron_size // 2, use_gamma=False)
-			self.bn2_1 = L.BatchNormalization(neuron_size, use_gamma=False)
-			self.bn3_0 = L.BatchNormalization(neuron_size, use_gamma=False)
+			self.c1=L.Convolution2D(3, 32, 4, 2, 1)
+			self.c2=L.Convolution2D(32, 32, 3, 1, 1)
+			self.c3=L.Convolution2D(32, 64, 4, 2, 1)
+			self.c4=L.Convolution2D(64, 64, 3, 1, 1)
+			self.c5=L.Convolution2D(64, 128, 4, 2, 1)
+			self.c6=L.Convolution2D(128, 128, 3, 1, 1)
+			self.c7=L.Convolution2D(128, 256, 4, 2, 1)
+			self.l8l=L.Linear(None, 2,initialW=chainer.initializers.HeNormal(math.sqrt(0.02 * math.sqrt(8 * 8 * 256) / 2)))
 
+			self.bnc1=L.BatchNormalization(32)
+			self.bnc2=L.BatchNormalization(32)
+			self.bnc3=L.BatchNormalization(64)
+			self.bnc4=L.BatchNormalization(64)
+			self.bnc5=L.BatchNormalization(128)
+			self.bnc6=L.BatchNormalization(128)
+			self.bnc7=L.BatchNormalization(256)
 	def __call__(self, x):
-		h = F.leaky_relu(self.c0_0(x))
-		h = F.dropout(F.leaky_relu(self.bn0_1(self.c0_1(h))),ratio=0.2)
-		h = F.dropout(F.leaky_relu(self.bn1_0(self.c1_0(h))),ratio=0.2)
-		h = F.dropout(F.leaky_relu(self.bn1_1(self.c1_1(h))),ratio=0.2)
-		h = F.dropout(F.leaky_relu(self.bn2_0(self.c2_0(h))),ratio=0.2)
-		h = F.dropout(F.leaky_relu(self.bn2_1(self.c2_1(h))),ratio=0.2)
-		h = F.dropout(F.leaky_relu(self.bn3_0(self.c3_0(h))),ratio=0.2)
-		return self.l4(h)	# 結果を返すのみ
+		h = F.leaky_relu(self.bnc1(self.c1(x)))
+		h = F.leaky_relu(self.bnc2(self.c2(h)))
+		h = F.leaky_relu(self.bnc3(self.c3(h)))
+		h = F.leaky_relu(self.bnc4(self.c4(h)))
+		h = F.leaky_relu(self.bnc5(self.c5(h)))
+		h = F.leaky_relu(self.bnc6(self.c6(h)))
+		h = F.leaky_relu(self.bnc7(self.c7(h)))
+		return 	self.l8l(h)# 結果を返すのみ
 
 # カスタムUpdaterのクラス
 class DCGANUpdater(training.StandardUpdater):
 
-	def __init__(self, train_iter, optimizer, device):
+	def __init__(self, images_iter, optimizer, device):
 		super(DCGANUpdater, self).__init__(
-			train_iter,
+			images_iter,
 			optimizer,
 			device=device
 		)
@@ -100,12 +150,14 @@ class DCGANUpdater(training.StandardUpdater):
 		L1 = F.sum(F.softplus(-y_real)) / batchsize
 		L2 = F.sum(F.softplus(y_fake)) / batchsize
 		loss = L1 + L2
+		reporter.report({'dis_loss':loss})
 		return loss
 
 	# 画像生成側の損失関数
 	def loss_gen(self, gen, y_fake):
 		batchsize = len(y_fake)
 		loss = F.sum(F.softplus(-y_fake)) / batchsize
+		reporter.report({'gen_loss':loss})
 		return loss
 
 	def update_core(self):
@@ -119,15 +171,10 @@ class DCGANUpdater(training.StandardUpdater):
 		# ニューラルネットワークのモデルを取得
 		gen = optimizer_gen.target
 		dis = optimizer_dis.target
-
-		# 乱数データを用意
-		rnd = random.uniform(-1, 1, (src.shape[0], 100))
-		rnd = cp.array(rnd, dtype=cp.float32)
 		
-		# 画像を生成して認識と教師データから認識
-		x_fake = gen(rnd)		# 乱数からの生成結果
-		y_fake = dis(x_fake)	# 乱数から生成したものの認識結果
-		y_real = dis(src)		# 教師データからの認識結果
+		x_fake = gen(src[1])		# 線画からの生成結果
+		y_fake = dis(x_fake)	# 線画から生成したものの判別結果
+		y_real = dis(src[0])		# 教師データからの判別結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
@@ -150,32 +197,41 @@ chainer.serializers.save_hdf5( 'dcgan-gen.hdf5', model_gen )
 chainer.serializers.save_hdf5( 'dcgan-dis.hdf5', model_dis )
 
 images = []
+line_drawings = []
 
-fs = os.listdir('/home/nagalab/soutarou/images')
+fs = os.listdir('/home/nagalab/soutarou/dcgan/images')
 for fn in fs:
 	# 画像を読み込んで128×128ピクセルにリサイズ
-	img = Image.open('/home/nagalab/soutarou/images/' + fn).convert('RGB').resize((128, 128))
-	# 画素データを0〜1の領域にする
-	hpix = np.array(img, dtype=np.float32) / 255.0
-	hpix = hpix.transpose(2,0,1)
-	# 配列に追加
-	images.append(hpix)
+	img = Image.open('/home/nagalab/soutarou/dcgan/images/' + fn).convert('RGB').resize((128, 128))
+
+	if 'jpg' in fn:
+		# 画素データを0〜1の領域にする
+		hpix1 = np.array(img, dtype=np.float32) / 255.0
+		hpix1= hpix1.transpose(2,0,1)
+	else:
+		# 画素データを0〜1の領域にする
+		hpix2 = np.array(img, dtype=np.float32) / 255.0
+		hpix2= hpix2.transpose(2,0,1)
+		# 配列に追加
+		images.append([hpix1,hpix2])
 
 # 繰り返し条件を作成する
-train_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
+images_iter = iterators.SerialIterator(images, batch_size, shuffle=True)
 
 # 誤差逆伝播法アルゴリズムを選択する
-optimizer_gen = optimizers.Adam(alpha=0.0002, beta1=0.5)
+optimizer_gen = optimizers.Adam(alpha=0.0001, beta1=0.5)
 optimizer_gen.setup(model_gen)
-optimizer_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
+optimizer_dis = optimizers.Adam(alpha=0.0001, beta1=0.5)
 optimizer_dis.setup(model_dis)
 
 # デバイスを選択してTrainerを作成する
-updater = DCGANUpdater(train_iter, \
+updater = DCGANUpdater(images_iter, \
 		{'opt_gen':optimizer_gen, 'opt_dis':optimizer_dis}, \
 		device=uses_device)
 trainer = training.Trainer(updater, (50000, 'epoch'), out="result")
 # 学習の進展を表示するようにする
+trainer.extend(extensions.LogReport(trigger=(100, 'epoch'), log_name='log'))
+trainer.extend(extensions.PlotReport(['dis_loss', 'gen_loss'], x_key='epoch', file_name='loss.png'))
 trainer.extend(extensions.ProgressBar())
 
 # 中間結果を保存する
