@@ -91,3 +91,4 @@ for i in range(num_generate):
 	f.write(','.join([str(j) for j in rnd[i][:,0][:,0]]))
 	f.write('\n')
 f.close()
+

@@ -195,3 +195,4 @@ trainer.run()
 # 学習結果を保存する
 chainer.serializers.save_hdf5( 'dcgan-gen.hdf5', model_gen )
 chainer.serializers.save_hdf5( 'dcgan-dis.hdf5', model_dis )
+
