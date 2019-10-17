@@ -12,7 +12,6 @@ from PIL import Image
 batch_size = 10			# バッチサイズ10
 uses_device = 0			# GPU#0を使用
 image_size = 128		# 生成画像のサイズ
-neuron_size = 64		# 中間層のサイズ
 
 # GPU使用時とCPU使用時でデータ形式が変わる
 if uses_device >= 0:
@@ -68,34 +67,34 @@ class DCGAN_Generator_NN(chainer.Chain):
 			self.bnd1=L.BatchNormalization(32)
 
 	def __call__(self, x):
-		e0 = F.relu(self.bnc0(self.c0(x)))
-		e1 = F.relu(self.bnc1(self.c1(e0)))
-		e2 = F.relu(self.bnc2(self.c2(e1)))
+		e0 = F.leaky_relu(self.bnc0(self.c0(x)))
+		e1 = F.leaky_relu(self.bnc1(self.c1(e0)))
+		e2 = F.leaky_relu(self.bnc2(self.c2(e1)))
 		del e1
-		e3 = F.relu(self.bnc3(self.c3(e2)))
-		e4 = F.relu(self.bnc4(self.c4(e3)))
+		e3 = F.leaky_relu(self.bnc3(self.c3(e2)))
+		e4 = F.leaky_relu(self.bnc4(self.c4(e3)))
 		del e3
-		e5 = F.relu(self.bnc5(self.c5(e4)))
-		e6 = F.relu(self.bnc6(self.c6(e5)))
+		e5 = F.leaky_relu(self.bnc5(self.c5(e4)))
+		e6 = F.leaky_relu(self.bnc6(self.c6(e5)))
 		del e5
-		e7 = F.relu(self.bnc7(self.c7(e6)))
-		e8 = F.relu(self.bnc8(self.c8(e7)))
+		e7 = F.leaky_relu(self.bnc7(self.c7(e6)))
+		e8 = F.leaky_relu(self.bnc8(self.c8(e7)))
 
-		d8 = F.relu(self.bnd8(self.dc8(F.concat([e7, e8]))))
+		d8 = F.leaky_relu(self.bnd8(self.dc8(F.concat([e7, e8]))))
 		del e7, e8
-		d7 = F.relu(self.bnd7(self.dc7(d8)))
+		d7 = F.leaky_relu(self.bnd7(self.dc7(d8)))
 		del d8
-		d6 = F.relu(self.bnd6(self.dc6(F.concat([e6, d7]))))
+		d6 = F.leaky_relu(self.bnd6(self.dc6(F.concat([e6, d7]))))
 		del d7, e6
-		d5 = F.relu(self.bnd5(self.dc5(d6)))
+		d5 = F.leaky_relu(self.bnd5(self.dc5(d6)))
 		del d6
-		d4 = F.relu(self.bnd4(self.dc4(F.concat([e4, d5]))))
+		d4 = F.leaky_relu(self.bnd4(self.dc4(F.concat([e4, d5]))))
 		del d5, e4
-		d3 = F.relu(self.bnd3(self.dc3(d4)))
+		d3 = F.leaky_relu(self.bnd3(self.dc3(d4)))
 		del d4
-		d2 = F.relu(self.bnd2(self.dc2(F.concat([e2, d3]))))
+		d2 = F.leaky_relu(self.bnd2(self.dc2(F.concat([e2, d3]))))
 		del d3, e2
-		d1 = F.relu(self.bnd1(self.dc1(d2)))
+		d1 = F.leaky_relu(self.bnd1(self.dc1(d2)))
 		del d2
 		d0 = F.sigmoid(self.dc0(F.concat([e0, d1])))
 		
