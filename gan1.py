@@ -9,7 +9,7 @@ import math
 from numpy import random
 from PIL import Image
 
-batch_size = 5			# バッチサイズ10
+batch_size = 10			# バッチサイズ10
 uses_device = 0			# GPU#0を使用
 
 # GPU使用時とCPU使用時でデータ形式が変わる
@@ -28,23 +28,22 @@ class DCGAN_Generator_NN(chainer.Chain):
 		super(DCGAN_Generator_NN, self).__init__()
 		# 全ての層を定義する
 		with self.init_scope():
-			self.l0 = L.Linear(100, 128 * 128, initialW=w)
-			self.dc1 = L.Deconvolution2D(64, 32, 4, 2, 1, initialW=w)
-			self.dc2 = L.Deconvolution2D(32, 16, 4, 2, 1, initialW=w)
-			self.dc3 = L.Deconvolution2D(16, 8, 4, 2, 1, initialW=w)
-			self.dc4 = L.Deconvolution2D(8, 3, 3, 1, 1, initialW=w)
-			self.bn0 = L.BatchNormalization(128 * 128)
+			self.c0 = L.Convolution2D(3, 64, 3, 8, 1, initialW=w)
+			self.dc0 = L.Deconvolution2D(64, 32, 4, 2, 1, initialW=w)
+			self.dc1 = L.Deconvolution2D(32, 16, 4, 2, 1, initialW=w)
+			self.dc2 = L.Deconvolution2D(16, 8, 4, 2, 1, initialW=w)
+			self.dc3 = L.Deconvolution2D(8, 3, 3, 1, 1, initialW=w)
+			self.bn0 = L.BatchNormalization(64)
 			self.bn1 = L.BatchNormalization(32)
 			self.bn2 = L.BatchNormalization(16)
 			self.bn3 = L.BatchNormalization(8)
 
 	def __call__(self, z):
-		shape = (len(z), 64, 16, 16)
-		h = F.reshape(F.relu(self.bn0(self.l0(z))), shape)
-		h = F.relu(self.bn1(self.dc1(h)))
-		h = F.relu(self.bn2(self.dc2(h)))
-		h = F.relu(self.bn3(self.dc3(h)))
-		x = F.sigmoid(self.dc4(h))
+		h = F.relu(self.bn0(self.c0(z)))
+		h = F.relu(self.bn1(self.dc0(h)))
+		h = F.relu(self.bn2(self.dc1(h)))
+		h = F.relu(self.bn3(self.dc2(h)))
+		x = F.sigmoid(self.dc3(h))
 		return x	# 結果を返すのみ
 
 # 画像を確認するNN
@@ -124,9 +123,9 @@ class DCGANUpdater(training.StandardUpdater):
 		rnd = cp.array(rnd, dtype=cp.float32)
 		
 		# 画像を生成して認識と教師データから認識
-		x_fake = gen(rnd)		# 乱数からの生成結果
+		x_fake = gen(src[1])		# 乱数からの生成結果
 		y_fake = dis(x_fake)	# 乱数から生成したものの認識結果
-		y_real = dis(src)		# 教師データからの認識結果
+		y_real = dis(src[0])		# 教師データからの認識結果
 
 		# ニューラルネットワークを学習
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
@@ -156,10 +155,14 @@ for fn in fs:
 
 	if 'jpg' in fn:
 		# 画素データを0〜1の領域にする
-		hpix = np.array(img, dtype=np.float32) / 255.0
-		hpix = hpix.transpose(2,0,1)
-	# 配列に追加
-	dataset.append(hpix)
+		hpix1 = np.array(img, dtype=np.float32) / 255.0
+		hpix1 = hpix1.transpose(2,0,1)
+	else:
+		# 画素データを0〜1の領域にする
+		hpix2 = np.array(img, dtype=np.float32) / 255.0
+		hpix2= hpix2.transpose(2,0,1)
+		# 配列に追加
+		dataset.append([hpix1,hpix2])
 
 # 繰り返し条件を作成する
 train_iter = iterators.SerialIterator(dataset, batch_size, shuffle=False)

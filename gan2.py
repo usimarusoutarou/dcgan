@@ -29,25 +29,23 @@ class DCGAN_Generator_NN(chainer.Chain):
 		# 重みデータの初期値を指定する
 		w = chainer.initializers.Normal(scale=0.02, dtype=None)
 		super(DCGAN_Generator_NN, self).__init__()
-		# 全ての層を定義する
 		with self.init_scope():
-			self.l0 = L.Linear(100, 128 * 128, initialW=w)
-			self.dc1 = L.Deconvolution2D(64, 32, 4, 2, 1, initialW=w)
-			self.dc2 = L.Deconvolution2D(32, 16, 4, 2, 1, initialW=w)
-			self.dc3 = L.Deconvolution2D(16, 8, 4, 2, 1, initialW=w)
-			self.dc4 = L.Deconvolution2D(8, 3, 3, 1, 1, initialW=w)
-			self.bn0 = L.BatchNormalization(128 * 128)
+			self.c0 = L.Convolution2D(3, 64, 3, 8, 1, initialW=w)
+			self.dc0 = L.Deconvolution2D(64, 32, 4, 2, 1, initialW=w)
+			self.dc1 = L.Deconvolution2D(32, 16, 4, 2, 1, initialW=w)
+			self.dc2 = L.Deconvolution2D(16, 8, 4, 2, 1, initialW=w)
+			self.dc3 = L.Deconvolution2D(8, 3, 3, 1, 1, initialW=w)
+			self.bn0 = L.BatchNormalization(64)
 			self.bn1 = L.BatchNormalization(32)
 			self.bn2 = L.BatchNormalization(16)
 			self.bn3 = L.BatchNormalization(8)
 
 	def __call__(self, z):
-		shape = (len(z), 64, 16, 16)
-		h = F.reshape(F.relu(self.bn0(self.l0(z))), shape)
-		h = F.relu(self.bn1(self.dc1(h)))
-		h = F.relu(self.bn2(self.dc2(h)))
-		h = F.relu(self.bn3(self.dc3(h)))
-		x = F.sigmoid(self.dc4(h))
+		h = F.relu(self.bn0(self.c0(z)))
+		h = F.relu(self.bn1(self.dc0(h)))
+		h = F.relu(self.bn2(self.dc1(h)))
+		h = F.relu(self.bn3(self.dc2(h)))
+		x = F.sigmoid(self.dc3(h))
 		return x	# 結果を返すのみ
 
 # ニューラルネットワークを作成
@@ -61,32 +59,31 @@ if uses_device >= 0:
 	model.to_gpu()
 
 # 学習結果を読み込む
-chainer.serializers.load_hdf5( 'gan-gen-30.hdf5', model )
+chainer.serializers.load_hdf5( 'gan-gen-3.hdf5', model )
 
 # 画像を生成する
-num_generate = 10	# 生成する画像の数
-# 元となるベクトルを作成
-rnd = random.uniform(-1, 1, (num_generate, 100, 1, 1))
-rnd = cp.array(rnd, dtype=cp.float32)
+num_generate = 1	# 生成する画像の数
 
-# バッチ処理を使って一度に生成する
-with chainer.using_config('train', False):
-	result = model(rnd)
+images = []
 
-# 生成した画像と元となったベクトルを保存する
-f = codecs.open('vectors.txt', 'w', 'utf8')
-for i in range(num_generate):
-	# 画像を保存する
-	data = np.zeros((128, 128, 3), dtype=np.uint8)
-	dst = result.data[i] * 255.0
-	if uses_device >= 0:
-		dst = chainer.cuda.to_cpu(dst)
-	data[:,:,0] = dst[0]
-	data[:,:,1] = dst[1]
-	data[:,:,2] = dst[2]
-	himg = Image.fromarray(data, 'RGB')
-	himg.save('gen-'+str(i)+'.png')
-	# 画像の元となったベクトルを保存する
-	f.write(','.join([str(j) for j in rnd[i][:,0][:,0]]))
-	f.write('\n')
-f.close()
+# 画像を読み込んで128×128ピクセルにリサイズ
+img = Image.open('/home/nagalab/soutarou/dcgan/images/' + 'image2-101.png').convert('RGB').resize((128, 128))
+# 画素データを0〜1の領域にする
+hpix = np.array(img, dtype=np.float32) / 255.0
+hpix = hpix.transpose(2,0,1)
+# 配列に追加
+images.append(hpix)
+	
+images = cp.array(images, dtype=cp.float32)
+
+result = model(images)
+
+data = np.zeros((128, 128, 3), dtype=np.uint8)
+dst = result.data[0] * 255.0
+if uses_device >= 0:
+	dst = chainer.cuda.to_cpu(dst)
+data[:,:,0] = dst[0]
+data[:,:,1] = dst[1]
+data[:,:,2] = dst[2]
+himg = Image.fromarray(data, 'RGB')
+himg.save('gen-'+str(0)+'.png')
