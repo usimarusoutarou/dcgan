@@ -114,7 +114,7 @@ if uses_device >= 0:
 	model.to_gpu()
 
 # 学習結果を読み込む
-chainer.serializers.load_hdf5( 'gan-gen-10.hdf5', model )
+chainer.serializers.load_hdf5( 'gan-gen-20.hdf5', model )
 
 # 画像を生成する
 num_generate = 1	# 生成する画像の数
@@ -122,7 +122,7 @@ num_generate = 1	# 生成する画像の数
 images = []
 
 # 画像を読み込んで128×128ピクセルにリサイズ
-img = Image.open('/home/nagalab/soutarou/dcgan/images/' + 'image2-101.png').convert('RGB').resize((128, 128))
+img = Image.open('/home/nagalab/soutarou/dcgan/images/' + 'image14-525.png').convert('RGB').resize((128, 128))
 # 画素データを0〜1の領域にする
 hpix = np.array(img, dtype=np.float32) / 255.0
 hpix = hpix.transpose(2,0,1)

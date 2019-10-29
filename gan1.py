@@ -150,7 +150,7 @@ class DCGANUpdater(training.StandardUpdater):
 		batchsize = len(y_fake)
 		L1 = F.sum(F.softplus(-y_real)) / batchsize
 		L2 = F.sum(F.softplus(y_fake)) / batchsize
-		loss = L1 + L2
+		loss = L1 + 10*L2
 		reporter.report({'dis_loss':loss})
 		return loss
 
