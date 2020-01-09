@@ -115,13 +115,13 @@ class Upsamp(chainer.Chain):
 # ベクトルから画像を生成するNN
 class DCGAN_Generator_NN(chainer.Chain):
 
-	def __init__(self):
+	def __init__(self,base = 32):
 		# 重みデータの初期値を指定する
-		w = chainer.initializers.Normal(scale=0.02, dtype=None)
+		w = chainer.initializers.GlorotUniform()
 		# 全ての層を定義する
 		super(DCGAN_Generator_NN, self).__init__()
+
 		with self.init_scope():
-			with self.init_scope():
 
 			#ヒント画像
 			self.x2c0 = L.Convolution2D(3, base, 3, 1, 1, initialW=w)
@@ -190,7 +190,7 @@ class DCGAN_Discriminator_NN(chainer.Chain):
 
 	def __init__(self):
 		# 重みデータの初期値を指定する
-		w = chainer.initializers.Normal(scale=0.02, dtype=None)
+		w = chainer.initializers.GlorotUniform()
 		super(DCGAN_Discriminator_NN, self).__init__()
 		# 全ての層を定義する
 		with self.init_scope():
@@ -266,7 +266,6 @@ class DCGANUpdater(training.StandardUpdater):
 		optimizer_dis.update(self.loss_dis, dis, y_fake, y_real)
 		optimizer_gen.update(self.loss_gen, gen, y_fake)
 		optimizer_gen.update(self.loss_gen, gen, y_fake)
-		optimizer_gen.update(self.loss_gen, gen, y_fake)
 		
 # ニューラルネットワークを作成
 model_gen = DCGAN_Generator_NN()
@@ -280,8 +279,8 @@ if uses_device >= 0:
 	model_gen.to_gpu()
 	model_dis.to_gpu()
 
-chainer.serializers.load_hdf5( 'gan-gen.hdf5', model_gen )
-chainer.serializers.load_hdf5( 'gan-dis.hdf5', model_dis )
+#chainer.serializers.load_hdf5( 'gan-gen.hdf5', model_gen )
+#chainer.serializers.load_hdf5( 'gan-dis.hdf5', model_dis )
 
 listdataset1 = []
 listdataset2 = []
@@ -315,7 +314,6 @@ train_iter = iterators.SerialIterator(dataset, batch_size, shuffle=True)
 # 誤差逆伝播法アルゴリズムを選択する
 optimizer_gen = optimizers.Adam(alpha=0.0002, beta1=0.5)
 optimizer_gen.setup(model_gen)
-model_gen.vgg16.disable_update()
 optimizer_dis = optimizers.Adam(alpha=0.0002, beta1=0.5)
 optimizer_dis.setup(model_dis)
 
